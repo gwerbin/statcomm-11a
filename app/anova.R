@@ -3,14 +3,15 @@ n_group <- 15
 m_group <- 0
 sd_group <- 1
 
-n_rep <- 2000
+n_rep <- 5000
 alpha = 0.05
 
 input_list <- list(
+  # list(rng = rnorm, inv_F = qnorm, n = n_group, mean = m_group + .6, sd = sd_group),
   list(rng = rnorm, inv_F = qnorm, n = n_group, mean = m_group, sd = sd_group),
   list(rng = rnorm, inv_F = qnorm, n = n_group, mean = m_group, sd = sd_group),
   list(rng = rnorm, inv_F = qnorm, n = n_group, mean = m_group, sd = sd_group),
-  list(rng = rnorm, inv_F = qnorm, n = n_group, mean = m_group, sd = sd_group)
+  list(rng = rt, inv_F = qt, n = n_group, df = 2, ncp = 1)
 )
 
 K <- length(input_list)
@@ -25,7 +26,7 @@ library(colorspace)
 sample_unif <- function(n_sample) seq(0 + 1/n_sample, 1 - 1/n_sample, 1/n_sample)
 
 y_pretty <- lapply(input_list, function(item) {
-  do.call(item[[2]], c(list(sample_unif(2000)), item[-(1:3)]))
+  do.call(item$inv_F, c(list(sample_unif(2000)), item[-(1:3)]))
 })
 
 N <- sum(vapply(input_list, `[[`, 0, 3))
@@ -34,6 +35,7 @@ group_padding <- max(group_sizes) - group_sizes
 between_df <- K - 1
 within_df <- sum(group_sizes - 1)
 
+y_rep <- vector("list", n_rep)
 group_means <- matrix(0, n_rep, K)
 grand_mean <- numeric(n_rep)
 between_ms <- between_ss <- numeric(n_rep)
