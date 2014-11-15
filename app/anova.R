@@ -35,6 +35,7 @@ group_padding <- max(group_sizes) - group_sizes
 between_df <- K - 1
 within_df <- sum(group_sizes - 1)
 
+y_rep <- vector("list", n_rep)
 group_means <- matrix(0, n_rep, K)
 grand_mean <- numeric(n_rep)
 between_ms <- between_ss <- numeric(n_rep)
