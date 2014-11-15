@@ -3,14 +3,15 @@ n_group <- 15
 m_group <- 0
 sd_group <- 1
 
-n_rep <- 2000
+n_rep <- 5000
 alpha = 0.05
 
 input_list <- list(
+  # list(rng = rnorm, inv_F = qnorm, n = n_group, mean = m_group + .6, sd = sd_group),
   list(rng = rnorm, inv_F = qnorm, n = n_group, mean = m_group, sd = sd_group),
   list(rng = rnorm, inv_F = qnorm, n = n_group, mean = m_group, sd = sd_group),
   list(rng = rnorm, inv_F = qnorm, n = n_group, mean = m_group, sd = sd_group),
-  list(rng = rnorm, inv_F = qnorm, n = n_group, mean = m_group, sd = sd_group)
+  list(rng = rt, inv_F = qt, n = n_group, df = 2, ncp = 1)
 )
 
 K <- length(input_list)
@@ -25,7 +26,7 @@ library(colorspace)
 sample_unif <- function(n_sample) seq(0 + 1/n_sample, 1 - 1/n_sample, 1/n_sample)
 
 y_pretty <- lapply(input_list, function(item) {
-  do.call(item[[2]], c(list(sample_unif(2000)), item[-(1:3)]))
+  do.call(item$inv_F, c(list(sample_unif(2000)), item[-(1:3)]))
 })
 
 N <- sum(vapply(input_list, `[[`, 0, 3))
