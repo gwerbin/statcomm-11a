@@ -7,11 +7,11 @@ n_rep <- 5000
 alpha = 0.05
 
 input_list <- list(
-  # list(rng = rnorm, inv_F = qnorm, n = n_group, mean = m_group + .6, sd = sd_group),
+  list(rng = rnorm, inv_F = qnorm, n = n_group, mean = m_group + .6, sd = sd_group),
   list(rng = rnorm, inv_F = qnorm, n = n_group, mean = m_group, sd = sd_group),
   list(rng = rnorm, inv_F = qnorm, n = n_group, mean = m_group, sd = sd_group),
-  list(rng = rnorm, inv_F = qnorm, n = n_group, mean = m_group, sd = sd_group),
-  list(rng = rt, inv_F = qt, n = n_group, df = 2, ncp = 1)
+  list(rng = rnorm, inv_F = qnorm, n = n_group, mean = m_group, sd = sd_group)
+  #list(rng = rt, inv_F = qt, n = n_group, df = 2, ncp = 1)
 )
 
 K <- length(input_list)
