@@ -3,11 +3,10 @@ n_group <- 15
 m_group <- 0
 sd_group <- 1
 
-n_rep <- 5000
+n_rep <- 1000
 alpha = 0.05
-
 input_list <- list(
-  list(rng = rnorm, inv_F = qnorm, n = n_group, mean = m_group + .6, sd = sd_group),
+  list(rng = rnorm, inv_F = qnorm, n = n_group, mean = m_group + 0.6, sd = sd_group),
   list(rng = rnorm, inv_F = qnorm, n = n_group, mean = m_group, sd = sd_group),
   list(rng = rnorm, inv_F = qnorm, n = n_group, mean = m_group, sd = sd_group),
   list(rng = rnorm, inv_F = qnorm, n = n_group, mean = m_group, sd = sd_group)
@@ -86,7 +85,7 @@ sampling_distribution_plot <- function(){
   ## sampling distributions
   # par(mar = c(3, 1, 2.5, 1) + .1)
   plot(density(grand_mean), lwd = 2, lty = "dashed", col = "darkgray",
-       xlab = "", ylab = "", main = "", yaxt = "n",
+       xlab = "", ylab = "", main = "Sampling distribution", yaxt = "n",
        xlim = c(min(group_means), max(group_means)))
   for(k in 1:K) lines(density(group_means[, k]), lwd = 2, col = plot_colors[k])
 }
@@ -97,13 +96,14 @@ mean_squares_plot <- function() {
   ## between MS
   # par(mar = c(1, 0, 2, 1) + .1)
   plot(between_den, lwd = 2, lty = "dashed",
-       main = "", xlab = "", ylab = "", yaxt = "n",
+       main = "Mean Squares", xlab = "", ylab = "", yaxt = "n",
        ylim = c(0, max(within_den$y)))
   
   ## within MS
   # par(mar = c(1, 0, 1, 1) + .1)
   lines(within_den, lwd = 2, lty = "dashed",
-       main = "", xlab = "", ylab = "", yaxt = "n")
+       main = "", xlab = "", ylab = "", yaxt = "n", col = "red")
+  legend("topright", legend = c("Between", "Within"), lty = "dashed", col = c("black", "red"))
 }
 
 f_stat_plot <- function() {
