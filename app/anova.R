@@ -1,3 +1,5 @@
+library(colorspace)
+
 # Input ----
 n_group <- 15
 m_group <- 0
@@ -18,10 +20,6 @@ K <- length(input_list)
 group_names <- paste0("G", 1:K)
 
 ## Generate data ----
-library(testthat)
-library(dplyr)
-library(reshape2)
-library(colorspace)
 
 sample_unif <- function(n_sample) seq(0 + 1/n_sample, 1 - 1/n_sample, 1/n_sample)
 
@@ -65,7 +63,7 @@ for(r in 1:n_rep) {
 }
 close(progress)
 
-# plotting ----
+# Plot data ----
 
 plot_colors <- rainbow_hcl(K, start = 30, end = 300)
  
