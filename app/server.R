@@ -12,7 +12,7 @@ shinyServer(function (input, output, session) {
       gsub("\n", ",", ., fixed = TRUE) %>%# catn %>%
       gsub(",,+", ",", .) %>%# catn %>%
       gsub("(,$)|((\\s+|\n)$)", "", .) %>%# catn %>%
-      sprintf("list(%s)", .) %>%# catn
+      sprintf("list(%s)", .)# %>% catn
 #     cat(input_list)
     stopApp()
     eval(parse(text = input_list))
