@@ -1,9 +1,13 @@
 library(parallel)
 library(doParallel)
-registerDoParallel(2)
+# if(!exists("cl"))
+  cl <- makeCluster(2)
+registerDoParallel(cl)
+# library(doRNG)
+# registerDoRNG(128640)
 library(foreach)
 
-set.seed(128640)
+# library(snow)
 
 library(colorspace)
 
@@ -13,7 +17,7 @@ library(colorspace)
 # Generate data ----
 sample_unif <- function(n_sample) seq(0 + 1/n_sample, 1 - 1/n_sample, 1/n_sample)
 
-generate_data <- function(input_list, n_rep, alpha, parallel = TRUE) {
+generate_data <- function(input_list, n_rep, alpha) {
   d <- new.env(size = 20L)
   
   d$K <- length(input_list)
@@ -35,10 +39,9 @@ generate_data <- function(input_list, n_rep, alpha, parallel = TRUE) {
   d$between_ms <- d$between_ss <- numeric(n_rep)
   d$within_ms <- d$within_ss <- numeric(n_rep)
   d$f <- numeric(n_rep)
-
-  `%do_fun%` <- if(parallel) `%dopar%` else `%do%`
   
-  foreach(r = 1:n_rep) %do_fun% {
+  foreach(r = 1:n_rep) %dopar% {
+    
     y_r <- lapply(input_list, function(item) do.call(item[[1]], item[-(1:2)]))
     d$y_rep[[r]] <- y_r
     names(y_r) <- d$group_names
@@ -56,7 +59,7 @@ generate_data <- function(input_list, n_rep, alpha, parallel = TRUE) {
     d$within_ms[r] <- d$within_ss[r] / d$within_df
     d$f[r] <- d$between_ms[r] / d$within_ms[r]
     
-    if (!(parallel || r %% 250)) {
+    if (!(r %% 250)) {
       cat(intToUtf8(128640))
       if (r == n_rep) cat("\n")
     }
@@ -149,16 +152,9 @@ f_stat_plot <- function(d) {
 
 # Timings ----
 # 
-il <- list(
-  list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1),
-  list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1),
-  list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1),
-  list(rng = rt, inv_F = qt, n = 15, df = 2, ncp = 1)
-)
-library(microbenchmark)
-results <- microbenchmark(
-r1 <- generate_data(il, 5000, 0.05),
-r2 <- generate_data(il, 5000, 0.05, parallel = FALSE),
-times = 1)
-cat("Done timing\n")
-stopApp()
+# il <- list(
+#   list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1),
+#   list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1),
+#   list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1),
+#   list(rng = rt, inv_F = qt, n = 15, df = 2, ncp = 1)
+# )

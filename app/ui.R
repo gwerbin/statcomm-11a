@@ -15,11 +15,12 @@ fluidPage(
   fluidRow(
     column(8,
            inputTextArea("input_list", "
-# list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0 + .6, sd = 1)
 list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1)
 list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1)
 list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1)
-list(rng = rt, inv_F = qt, n = 15, df = 2, ncp = 1)
+list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1)
+# list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0 + 0.6, sd = 1)
+# list(rng = rt, inv_F = qt, n = 15, df = 2, ncp = 1)
 ", nrows = 15, ncols = 80)
     ),
     column(4,
