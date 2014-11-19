@@ -37,23 +37,23 @@ generate_data <- function(input_list, n_rep, alpha) {
   d$y_rep <- matrix(foreach(r = 1:n_rep) %:%
               foreach(k = 1:d$K, .combine = c) %dopar% {
     do.call(input_list[[k]][[1]], input_list[[k]][-(1:2)])
-  }, K, n_rep)
+  }, n_rep, K)
 
-  d$group_means <- matrix(0, d$K, n_rep)
+  d$group_means <- matrix(0, n_rep, K)
   d$grand_mean <- numeric(n_rep)
   d$between_ms <- numeric(n_rep)
   d$within_ms <- numeric(n_rep)
   d$f <- numeric(n_rep)
 
 for(r in 1:n_rep) {
-    d$grand_mean[r] <- mean(unlist(d$y_rep[, r]))
+    d$grand_mean[r] <- mean(unlist(d$y_rep[r, k]))
     
     for(k in 1:d$K) {
       n_k <- input_list[[k]]$n
-      d$group_means[r, k] <- mean(d$y_rep[k, r])
+      d$group_means[r, k] <- mean(d$y_rep[r, k])
       
-      between_ss <- n_k * (d$group_means[k, r] - d$grand_mean[r])^2
-      within_ss <- sum((d$y_rep[k, r] - d$group_means[k, r])^2)
+      between_ss <- n_k * (d$group_means[r, k] - d$grand_mean[r])^2
+      within_ss <- sum((d$y_rep[r, k] - d$group_means[r, k])^2)
     }
     d$between_ms[r] <- between_ss / d$between_df
     d$within_ms[r] <- within_ss / d$within_df
