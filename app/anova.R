@@ -1,42 +1,49 @@
+library(parallel)
+library(doParallel)
+registerDoParallel(2)
+library(foreach)
+
 library(colorspace)
 
-plots <- new.env()
+library(testthat)
+
+## Is there a better way to do this than passing around an environment?
+## I'd rather just assign everything once and take care of it with scoping
 
 # Generate data ----
-plots$sample_unif <- function(n_sample) seq(0 + 1/n_sample, 1 - 1/n_sample, 1/n_sample)
+sample_unif <- function(n_sample) seq(0 + 1/n_sample, 1 - 1/n_sample, 1/n_sample)
 
-plots$generate_data <- function(input_list, n_rep, alpha) {
-  d <- new.env()
+generate_data <- function(input_list, n_rep, alpha) {
+  d <- new.env(size = n_rep)
   
   d$K <- length(input_list)
   d$group_names <- paste0("G", 1:d$K)
 
   d$y_pretty <- lapply(input_list, function(item) {
-    do.call(item$inv_F, c(list(plots$sample_unif(2000)), item[-(1:3)]))
+    do.call(item$inv_F, c(list(sample_unif(2000)), item[-(1:3)]))
   })
   
   d$N <- sum(vapply(input_list, `[[`, 0, 3))
   d$group_sizes <- vapply(input_list, function(grp) grp$n, 0)
-  d$group_padding <- max(d$group_sizes) - d$group_sizes
+#   group_padding <- max(d$group_sizes) - d$group_sizes
   d$between_df <- d$K - 1
   d$within_df <- sum(d$group_sizes - 1)
   
-  d$y_rep <<- vector("list", n_rep)
+  d$y_rep <- vector("list", n_rep)
   d$group_means <- matrix(0, n_rep, d$K)
   d$grand_mean <- numeric(n_rep)
   d$between_ms <- d$between_ss <- numeric(n_rep)
   d$within_ms <- d$within_ss <- numeric(n_rep)
-  d$f <<- numeric(n_rep)
+  d$f <- numeric(n_rep)
   
-  progress <- txtProgressBar(max = n_rep, style = 3)
-  for(r in 1:n_rep) {
+  foreach(r = 1:n_rep) %do% {
     y_r <- lapply(input_list, function(item) do.call(item[[1]], item[-(1:2)]))
     d$y_rep[[r]] <- y_r
     names(y_r) <- d$group_names
     
-    d$grand_mean[r] <<- mean(unlist(y_r))
+    d$grand_mean[r] <- mean(unlist(y_r))
     
-    for(k in 1:K) {
+    for(k in 1:d$K) {
       n_k <- input_list[[k]]$n
       d$group_means[r, k] <- mean(y_r[[k]])
       
@@ -47,23 +54,33 @@ plots$generate_data <- function(input_list, n_rep, alpha) {
     d$within_ms[r] <- d$within_ss[r] / d$within_df
     d$f[r] <- d$between_ms[r] / d$within_ms[r]
     
-    setTxtProgressBar(progress, r)
+    NULL
   }
-  close(progress)
 
-  d$plot_colors <- rainbow_hcl(K, start = 30, end = 300)
+  d$plot_colors <- rainbow_hcl(d$K, start = 30, end = 300)
+  d$alpha <- alpha
   
-  invisible(d)
+  d
 }
+
+# for debugging
+il <- list(
+  list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1),
+  list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1),
+  list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1),
+  list(rng = rt, inv_F = qt, n = 15, df = 2, ncp = 1)
+)
+result <- generate_data(il, 5000, 0.05)
 
 # Plot data ----
  
-plots$data_boxplot <- function(d) {
+data_boxplot <- function(d) {
   layout(matrix(c(1,1,1,2), nrow = 1))
+  
   ## group boxplot
   par(mar = c(3, 2, 1, 0) + .1)
   boxplot(d$y_pretty, col = d$plot_colors, xaxt = "n", las = 1)
-  axis(1, at = 1:K, labels = d$group_names, tick = FALSE)
+  axis(1, at = 1:d$K, labels = d$group_names, tick = FALSE)
   
   ## overall boxplot
   par(mar = c(3, 0, 1, 1) + .1)
@@ -71,31 +88,32 @@ plots$data_boxplot <- function(d) {
   axis(1, at = 1, labels = "Overall", tick = FALSE)
 }
 
-plots$sampling_distribution_plot <- function(d){
+sampling_distribution_plot <- function(d){
   ## sampling distributions
   # par(mar = c(3, 1, 2.5, 1) + .1)
   plot(density(d$grand_mean), lwd = 2, lty = "dashed", col = "darkgray",
        xlab = "", ylab = "", main = "", yaxt = "n",
        xlim = c(min(d$group_means), max(d$group_means)))
-  for(k in 1:K) lines(density(d$group_means[, k]), lwd = 2, col = d$plot_colors[k])
+  for(k in 1:d$K) lines(density(d$group_means[, k]),
+                        lwd = 2, col = d$plot_colors[k])
 }
 
-plots$mean_squares_plot <- function(d) {
+mean_squares_plot <- function(d) {
   between_den <- density(d$between_ms)
   within_den <- density(d$within_ms)
   ## between MS
   # par(mar = c(1, 0, 2, 1) + .1)
-  plot(d$between_den, lwd = 2, lty = "dashed",
+  plot(between_den, lwd = 2, lty = "dashed",
        main = "", xlab = "", ylab = "", yaxt = "n",
-       ylim = c(0, max(d$within_den$y)))
+       ylim = c(0, max(within_den$y)))
   
   ## within MS
   # par(mar = c(1, 0, 1, 1) + .1)
-  lines(d$within_den, lwd = 2, lty = "dashed",
+  lines(within_den, lwd = 2, lty = "dashed",
        main = "", xlab = "", ylab = "", yaxt = "n")
 }
 
-plots$f_stat_plot <- function(d) {
+f_stat_plot <- function(d) {
   h <- hist(d$f, breaks = 50, plot = FALSE)
   xlim <- c(min(h$breaks), max(h$breaks))
   x <- seq(xlim[1], xlim[2], 0.1)

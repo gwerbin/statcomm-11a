@@ -15,18 +15,12 @@ fluidPage(
   fluidRow(
     column(8,
            inputTextArea("input_list", "
-n_group <- 15
-m_group <- 0
-sd_group <- 1
-
-input_list <- list(
-  # list(rng = rnorm, inv_F = qnorm, n = n_group, mean = m_group + .6, sd = sd_group),
-  list(rng = rnorm, inv_F = qnorm, n = n_group, mean = m_group, sd = sd_group),
-  list(rng = rnorm, inv_F = qnorm, n = n_group, mean = m_group, sd = sd_group),
-  list(rng = rnorm, inv_F = qnorm, n = n_group, mean = m_group, sd = sd_group),
-  list(rng = rt, inv_F = qt, n = n_group, df = 2, ncp = 1)
-)
-", nrows = 15, ncols = 80)
+# list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0 + .6, sd = 1)
+list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1)
+list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1)
+list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1)
+list(rng = rt, inv_F = qt, n = 15, df = 2, ncp = 1)
+                         ", nrows = 15, ncols = 80)
     ),
     column(4,
            textInput("n_rep", "Number of simulations:", 5000),
