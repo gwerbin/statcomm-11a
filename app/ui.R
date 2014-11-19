@@ -20,7 +20,7 @@ list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1)
 list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1)
 list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1)
 list(rng = rt, inv_F = qt, n = 15, df = 2, ncp = 1)
-                         ", nrows = 15, ncols = 80)
+", nrows = 15, ncols = 80)
     ),
     column(4,
            textInput("n_rep", "Number of simulations:", 5000),

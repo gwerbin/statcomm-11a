@@ -3,10 +3,9 @@ library(doParallel)
 registerDoParallel(2)
 library(foreach)
 
-library(colorspace)
+set.seed(128640)
 
-library(testthat)
-library(timeit)
+library(colorspace)
 
 ## Is there a better way to do this than passing around an environment?
 ## I'd rather just assign everything once and take care of it with scoping
@@ -55,6 +54,7 @@ generate_data <- function(input_list, n_rep, alpha) {
     d$within_ms[r] <- d$within_ss[r] / d$within_df
     d$f[r] <- d$between_ms[r] / d$within_ms[r]
     
+#     cat(intToUtf8(128640))
     NULL
   }
 
@@ -149,6 +149,9 @@ f_stat_plot <- function(d) {
 #   list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1),
 #   list(rng = rt, inv_F = qt, n = 15, df = 2, ncp = 1)
 # )
-# microbenchmark(generate_data(il, 5000, 0.5, hash = FALSE),
-#                generate_data(il, 5000, 0.5), times = 1)
+# library(microbenchmark)
+# microbenchmark(
+# 
+# )
 # cat("Done timing\n")
+# stopApp()
