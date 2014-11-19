@@ -2,7 +2,7 @@ library(parallel)
 library(doParallel)
 registerDoParallel(2)
 library(foreach)
-library(dplyr)
+
 library(colorspace)
 
 library(testthat)
@@ -70,7 +70,7 @@ il <- list(
   list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1),
   list(rng = rt, inv_F = qt, n = 15, df = 2, ncp = 1)
 )
-result <- generate_data(il, 500, 0.05)
+result <- generate_data(il, 5000, 0.05)
 
 # Plot data ----
  

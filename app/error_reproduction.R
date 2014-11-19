@@ -1,6 +1,12 @@
 library(shiny)
 
 server <- function(input, output) {
+  
+  txt_fn <- function(e){
+#     browser()
+    text(1/2, 1/2, e$text_input)
+  }
+  
   e <- reactive({
     e <- new.env()
     e$text_input <- sprintf("input: %s", input$text)
@@ -8,7 +14,7 @@ server <- function(input, output) {
     e
   })
   output$print_text <- renderPlot({
-    text(1/2, 1/2, e()$text_input)
+    txt_fn(e())
   })
   output
 }

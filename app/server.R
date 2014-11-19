@@ -12,16 +12,16 @@ shinyServer(function (input, output, session) {
       sprintf("list(%s)", .)
     eval(parse(text = input_list))
   })
-  n_rep <- reactive(input$n_rep)
-  alpha <- reactive(input$alpha)
+  n_rep <- reactive(as.numeric(input$n_rep))
+  alpha <- reactive(as.numeric(input$alpha))
   
   data_env <- reactive(generate_data(input_list(), n_rep(), alpha()))
   
-  browser()
+#   browser()
 #   
-#   output$boxplots <- renderPlot(data_boxplot(data_env()))
-#   output$sampling_dist <- renderPlot(sampling_distribution_plot(data_env()))
-#   output$mean_squares <- renderPlot(mean_squares_plot(data_env()))
-#   output$f_stat <- renderPlot(f_stat_plot(data_env()))
+  output$boxplots <- renderPlot(data_boxplot(data_env()))
+  output$sampling_dist <- renderPlot(sampling_distribution_plot(data_env()))
+  output$mean_squares <- renderPlot(mean_squares_plot(data_env()))
+  output$f_stat <- renderPlot(f_stat_plot(data_env()))
   
 })
