@@ -1,14 +1,17 @@
 library(parallel)
 library(doParallel)
+registerDoParallel(2)
 library(foreach)
 library(dplyr)
 library(colorspace)
+
+library(testthat)
 
 # Generate data ----
 sample_unif <- function(n_sample) seq(0 + 1/n_sample, 1 - 1/n_sample, 1/n_sample)
 
 generate_data <- function(input_list, n_rep, alpha) {
-  d <- new.env()
+  d <- new.env(size = n_rep)
   
   d$K <- length(input_list)
   d$group_names <- paste0("G", 1:d$K)
@@ -19,7 +22,7 @@ generate_data <- function(input_list, n_rep, alpha) {
   
   d$N <- sum(vapply(input_list, `[[`, 0, 3))
   d$group_sizes <- vapply(input_list, function(grp) grp$n, 0)
-  d$group_padding <- max(d$group_sizes) - d$group_sizes
+#   group_padding <- max(d$group_sizes) - d$group_sizes
   d$between_df <- d$K - 1
   d$within_df <- sum(d$group_sizes - 1)
   
@@ -30,8 +33,7 @@ generate_data <- function(input_list, n_rep, alpha) {
   d$within_ms <- d$within_ss <- numeric(n_rep)
   d$f <- numeric(n_rep)
   
-  progress <- txtProgressBar(max = n_rep, style = 3)
-  foreach(r = 1:n_rep) %dopar% {
+  foreach(r = 1:n_rep) %do% {
     y_r <- lapply(input_list, function(item) do.call(item[[1]], item[-(1:2)]))
     d$y_rep[[r]] <- y_r
     names(y_r) <- d$group_names
@@ -49,21 +51,28 @@ generate_data <- function(input_list, n_rep, alpha) {
     d$within_ms[r] <- d$within_ss[r] / d$within_df
     d$f[r] <- d$between_ms[r] / d$within_ms[r]
     
-    setTxtProgressBar(progress, r)
+    NULL
   }
-  close(progress)
 
   d$plot_colors <- rainbow_hcl(d$K, start = 30, end = 300)
   d$alpha <- alpha
   
-  print("12345")
-  
   d
 }
+
+# for debugging
+il <- list(
+  list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1),
+  list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1),
+  list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1),
+  list(rng = rt, inv_F = qt, n = 15, df = 2, ncp = 1)
+)
+result <- generate_data(il, 500, 0.05)
 
 # Plot data ----
  
 data_boxplot <- function(d) {
+#   browser()
   layout(matrix(c(1,1,1,2), nrow = 1))
   ## group boxplot
   par(mar = c(3, 2, 1, 0) + .1)
@@ -82,7 +91,8 @@ sampling_distribution_plot <- function(d){
   plot(density(d$grand_mean), lwd = 2, lty = "dashed", col = "darkgray",
        xlab = "", ylab = "", main = "", yaxt = "n",
        xlim = c(min(d$group_means), max(d$group_means)))
-  for(k in 1:d$K) lines(density(d$group_means[, k]), lwd = 2, col = d$plot_colors[k])
+  for(k in 1:d$K) lines(density(d$group_means[, k]),
+                        lwd = 2, col = d$plot_colors[k])
 }
 
 mean_squares_plot <- function(d) {
