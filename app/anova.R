@@ -21,11 +21,12 @@ generate_data <- function(input_list, n_rep, alpha) {
   d <- new.env(size = 20L)
   
   d$K <- length(input_list)
-  d$group_names <- paste0("G", 1:d$K)
+  names(input_list) <- paste0("G", 1:d$K)
+  d$input_list <- input_list
 
-  d$y_pretty <- lapply(input_list, function(item) {
+  d$y_pretty <- sapply(input_list, function(item) {
     do.call(item$inv_F, c(list(sample_unif(2000)), item[-(1:3)]))
-  })
+  }, simplify = FALSE, USE.NAMES = TRUE)
   
   d$N <- sum(vapply(input_list, `[[`, 0, 3))
   d$group_sizes <- vapply(input_list, function(grp) grp$n, 0)
@@ -33,38 +34,35 @@ generate_data <- function(input_list, n_rep, alpha) {
   d$between_df <- d$K - 1
   d$within_df <- sum(d$group_sizes - 1)
   
-  d$y_rep <- vector("list", n_rep)
-  d$group_means <- matrix(0, n_rep, d$K)
+  d$y_rep <- matrix(foreach(r = 1:n_rep) %:%
+              foreach(k = 1:d$K, .combine = c) %dopar% {
+    do.call(input_list[[k]][[1]], input_list[[k]][-(1:2)])
+  }, K, n_rep)
+
+  d$group_means <- matrix(0, d$K, n_rep)
   d$grand_mean <- numeric(n_rep)
-  d$between_ms <- d$between_ss <- numeric(n_rep)
-  d$within_ms <- d$within_ss <- numeric(n_rep)
+  d$between_ms <- numeric(n_rep)
+  d$within_ms <- numeric(n_rep)
   d$f <- numeric(n_rep)
-  
-  foreach(r = 1:n_rep) %dopar% {
-    
-    y_r <- lapply(input_list, function(item) do.call(item[[1]], item[-(1:2)]))
-    d$y_rep[[r]] <- y_r
-    names(y_r) <- d$group_names
-    
-    d$grand_mean[r] <- mean(unlist(y_r))
+
+for(r in 1:n_rep) {
+    d$grand_mean[r] <- mean(unlist(d$y_rep[, r]))
     
     for(k in 1:d$K) {
       n_k <- input_list[[k]]$n
-      d$group_means[r, k] <- mean(y_r[[k]])
+      d$group_means[r, k] <- mean(d$y_rep[k, r])
       
-      d$between_ss[r] <- n_k * (d$group_means[r, k] - d$grand_mean[r])^2 + d$between_ss[r]
-      d$within_ss[r] <- sum((y_r[[k]] - d$group_means[r, k])^2) + d$within_ss[r]
+      between_ss <- n_k * (d$group_means[k, r] - d$grand_mean[r])^2
+      within_ss <- sum((d$y_rep[k, r] - d$group_means[k, r])^2)
     }
-    d$between_ms[r] <- d$between_ss[r] / d$between_df
-    d$within_ms[r] <- d$within_ss[r] / d$within_df
+    d$between_ms[r] <- between_ss / d$between_df
+    d$within_ms[r] <- within_ss / d$within_df
     d$f[r] <- d$between_ms[r] / d$within_ms[r]
     
     if (!(r %% 250)) {
       cat(intToUtf8(128640))
       if (r == n_rep) cat("\n")
     }
-    
-    invisible(NULL)
   }
 
   d$plot_colors <- rainbow_hcl(d$K, start = 30, end = 300)
@@ -81,7 +79,7 @@ data_boxplot <- function(d) {
   ## group boxplot
   par(mar = c(3, 2, 1, 0) + .1)
   boxplot(d$y_pretty, col = d$plot_colors, xaxt = "n", las = 1)
-  axis(1, at = 1:d$K, labels = d$group_names, tick = FALSE)
+  axis(1, at = 1:d$K, labels = names(input_list), tick = FALSE)
   
   ## overall boxplot
   par(mar = c(3, 0, 1, 1) + .1)
