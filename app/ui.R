@@ -24,7 +24,7 @@ list(rng = rt, inv_F = qt, n = 15, df = 2, ncp = 1)
     ),
     column(4,
            textInput("n_rep", "Number of simulations:", 5000),
-           textInput("alpha", "Alpha level of F test:", 0.5)
+           textInput("alpha", "Alpha level of F test:", 0.05)
     )
   ),
   theme = "bootstrap.css"

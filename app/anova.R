@@ -6,6 +6,7 @@ library(foreach)
 library(colorspace)
 
 library(testthat)
+library(timeit)
 
 ## Is there a better way to do this than passing around an environment?
 ## I'd rather just assign everything once and take care of it with scoping
@@ -14,7 +15,7 @@ library(testthat)
 sample_unif <- function(n_sample) seq(0 + 1/n_sample, 1 - 1/n_sample, 1/n_sample)
 
 generate_data <- function(input_list, n_rep, alpha) {
-  d <- new.env(size = n_rep)
+  d <- new.env(size = 20L)
   
   d$K <- length(input_list)
   d$group_names <- paste0("G", 1:d$K)
@@ -62,15 +63,6 @@ generate_data <- function(input_list, n_rep, alpha) {
   
   d
 }
-
-# for debugging
-il <- list(
-  list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1),
-  list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1),
-  list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1),
-  list(rng = rt, inv_F = qt, n = 15, df = 2, ncp = 1)
-)
-result <- generate_data(il, 5000, 0.05)
 
 # Plot data ----
  
@@ -148,3 +140,15 @@ f_stat_plot <- function(d) {
     line = 2
   )
 }
+
+# Timings ----
+# 
+# il <- list(
+#   list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1),
+#   list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1),
+#   list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1),
+#   list(rng = rt, inv_F = qt, n = 15, df = 2, ncp = 1)
+# )
+# microbenchmark(generate_data(il, 5000, 0.5, hash = FALSE),
+#                generate_data(il, 5000, 0.5), times = 1)
+# cat("Done timing\n")
