@@ -17,9 +17,11 @@ shinyServer(function (input, output, session) {
   
   data_env <- reactive(generate_data(input_list(), n_rep(), alpha()))
   
-  output$boxplots <- renderPlot(data_boxplot(data_env()))
-  output$sampling_dist <- renderPlot(sampling_distribution_plot(data_env()))
-  output$mean_squares <- renderPlot(mean_squares_plot(data_env()))
-  output$f_stat <- renderPlot(f_stat_plot(data_env()))
+  browser()
+#   
+#   output$boxplots <- renderPlot(data_boxplot(data_env()))
+#   output$sampling_dist <- renderPlot(sampling_distribution_plot(data_env()))
+#   output$mean_squares <- renderPlot(mean_squares_plot(data_env()))
+#   output$f_stat <- renderPlot(f_stat_plot(data_env()))
   
 })
