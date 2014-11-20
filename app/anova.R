@@ -1,12 +1,16 @@
 library(parallel)
 library(doParallel)
-registerDoParallel(2)
+# if(exists(".cl")) {
+#   stopCluster(.cl)
+#   rm(.cl)
+# }
+# .cl <- makeCluster(2, methods = FALSE)
+# registerDoParallel(.cl)
+library(doRNG)
 library(foreach)
+library(abind)
 
 library(colorspace)
-
-library(testthat)
-library(timeit)
 
 ## Is there a better way to do this than passing around an environment?
 ## I'd rather just assign everything once and take care of it with scoping
@@ -14,48 +18,69 @@ library(timeit)
 # Generate data ----
 sample_unif <- function(n_sample) seq(0 + 1/n_sample, 1 - 1/n_sample, 1/n_sample)
 
-generate_data <- function(input_list, n_rep, alpha) {
+generate_data <- function(input_list, n_rep, alpha, parallel = FALSE) {
   d <- new.env(size = 20L)
   
   d$K <- length(input_list)
-  d$group_names <- paste0("G", 1:d$K)
+  names(input_list) <- paste0("G", 1:d$K)
+  d$input_list <- input_list
 
-  d$y_pretty <- lapply(input_list, function(item) {
+  d$y_pretty <- sapply(input_list, function(item) {
     do.call(item$inv_F, c(list(sample_unif(2000)), item[-(1:3)]))
-  })
+  }, simplify = FALSE, USE.NAMES = TRUE)
+  
+  d$group_sizes <- vapply(input_list, function(grp) grp$n, 0)
+  max_n_k <- max(d$group_sizes)
+  group_padding <- max_n_k - d$group_sizes
+  
+  `%do_func%` <- if(parallel) `%dopar%` else `%do%`
+  rng <- RNGseq(d$K * n_rep, 128640)
+  # dim 1: obs
+  # dim 2: replications
+  # dim 3: groups
+  # y_rep[, r, k] is y in replication r, group k
+  # y_rep[i, r, k] is y_i in replication r, group k
+  # y_rep[i, , k] is all y_i's in group k across reps
+  # y_rep[i, r, ] is all y_i's in rep r across groups (not so meaningful)
+  a3bind <- function(...) abind(..., along = 3)
+  y_rep <- array(NA, c(max_n_k, n_rep, d$K))
+  d$y_rep <- foreach(k = 1:d$K, .combine = a3bind) %:%
+    foreach(r = 1:n_rep, rand = rng[(k - 1) * n_rep + 1:n_rep],
+            .combine = cbind) %do_func% {
+              if(parallel) rngtools::setRNG(rand)
+              y <- do.call(input_list[[k]][[1]], input_list[[k]][-(1:2)])
+              padding <- rep(NA, group_padding[k])
+              c(y, padding)
+            }
+  print(dim(d$y_rep))
   
   d$N <- sum(vapply(input_list, `[[`, 0, 3))
-  d$group_sizes <- vapply(input_list, function(grp) grp$n, 0)
-#   group_padding <- max(d$group_sizes) - d$group_sizes
   d$between_df <- d$K - 1
   d$within_df <- sum(d$group_sizes - 1)
-  
-  d$y_rep <- vector("list", n_rep)
   d$group_means <- matrix(0, n_rep, d$K)
   d$grand_mean <- numeric(n_rep)
-  d$between_ms <- d$between_ss <- numeric(n_rep)
-  d$within_ms <- d$within_ss <- numeric(n_rep)
+  d$between_ms <- numeric(n_rep)
+  d$within_ms <- numeric(n_rep)
   d$f <- numeric(n_rep)
-  
-  foreach(r = 1:n_rep) %do% {
-    y_r <- lapply(input_list, function(item) do.call(item[[1]], item[-(1:2)]))
-    d$y_rep[[r]] <- y_r
-    names(y_r) <- d$group_names
-    
-    d$grand_mean[r] <- mean(unlist(y_r))
+
+for(r in 1:n_rep) {
+    d$grand_mean[r] <- mean(unlist(d$y_rep[, r, ]))
     
     for(k in 1:d$K) {
       n_k <- input_list[[k]]$n
-      d$group_means[r, k] <- mean(y_r[[k]])
+      d$group_means[r, k] <- mean(d$y_rep[, r, k])
       
-      d$between_ss[r] <- n_k * (d$group_means[r, k] - d$grand_mean[r])^2 + d$between_ss[r]
-      d$within_ss[r] <- sum((y_r[[k]] - d$group_means[r, k])^2) + d$within_ss[r]
+      between_ss <- n_k * (d$group_means[r, k] - d$grand_mean[r])^2
+      within_ss <- sum((d$y_rep[, r, k] - d$group_means[r, k])^2)
     }
-    d$between_ms[r] <- d$between_ss[r] / d$between_df
-    d$within_ms[r] <- d$within_ss[r] / d$within_df
+    d$between_ms[r] <- between_ss / d$between_df
+    d$within_ms[r] <- within_ss / d$within_df
     d$f[r] <- d$between_ms[r] / d$within_ms[r]
     
-    NULL
+    if (!(r %% 250)) {
+      cat(intToUtf8(128640))
+      if (r == n_rep) cat("\n")
+    }
   }
 
   d$plot_colors <- rainbow_hcl(d$K, start = 30, end = 300)
@@ -72,7 +97,7 @@ data_boxplot <- function(d) {
   ## group boxplot
   par(mar = c(3, 2, 1, 0) + .1)
   boxplot(d$y_pretty, col = d$plot_colors, xaxt = "n", las = 1)
-  axis(1, at = 1:d$K, labels = d$group_names, tick = FALSE)
+  axis(1, at = 1:d$K, labels = names(d$input_list), tick = FALSE)
   
   ## overall boxplot
   par(mar = c(3, 0, 1, 1) + .1)
@@ -143,12 +168,9 @@ f_stat_plot <- function(d) {
 
 # Timings ----
 # 
-# il <- list(
-#   list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1),
-#   list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1),
-#   list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1),
-#   list(rng = rt, inv_F = qt, n = 15, df = 2, ncp = 1)
-# )
-# microbenchmark(generate_data(il, 5000, 0.5, hash = FALSE),
-#                generate_data(il, 5000, 0.5), times = 1)
-# cat("Done timing\n")
+il <- list(
+  list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1),
+  list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1),
+  list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1),
+  list(rng = rt, inv_F = qt, n = 15, df = 2, ncp = 1)
+)
