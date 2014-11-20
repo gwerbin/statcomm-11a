@@ -20,7 +20,7 @@ shinyServer(function (input, output, session) {
   data_env <- reactive({
     withProgress(
       message = "Generating data", value = 0, {
-      out <<- generate_data(input_list(), n_rep(), alpha())
+      out <<- generate_data(input_list(), n_rep(), alpha(), parallel = FALSE)
       setProgress(value = 1)
       out
     })
