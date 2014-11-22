@@ -1,5 +1,5 @@
-library(parallel)
-library(doParallel)
+# library(parallel)
+# library(doParallel)
 # if(exists(".cl")) {
 #   stopCluster(.cl)
 #   rm(.cl)
@@ -18,13 +18,13 @@ library(colorspace)
 # Generate data ----
 sample_unif <- function(n_sample) seq(0 + 1/n_sample, 1 - 1/n_sample, 1/n_sample)
 
-generate_data <- function(input_list, n_rep, alpha, parallel = FALSE) {
+generate_data <- function(input_list, n_rep, parallel = FALSE) {
   d <- new.env(size = 20L)
   
   d$K <- length(input_list)
   names(input_list) <- paste0("G", 1:d$K)
   d$input_list <- input_list
-
+  
   d$y_pretty <- sapply(input_list, function(item) {
     do.call(item$inv_F, c(list(sample_unif(2000)), item[-(1:3)]))
   }, simplify = FALSE, USE.NAMES = TRUE)
@@ -44,6 +44,8 @@ generate_data <- function(input_list, n_rep, alpha, parallel = FALSE) {
   # y_rep[i, r, ] is all y_i's in rep r across groups (not so meaningful)
   a3bind <- function(...) abind(..., along = 3)
   y_rep <- array(NA, c(max_n_k, n_rep, d$K))
+  
+  print(system.time(
   d$y_rep <- foreach(k = 1:d$K, .combine = a3bind) %:%
     foreach(r = 1:n_rep, rand = rng[(k - 1) * n_rep + 1:n_rep],
             .combine = cbind) %do_func% {
@@ -52,7 +54,7 @@ generate_data <- function(input_list, n_rep, alpha, parallel = FALSE) {
               padding <- rep(NA, group_padding[k])
               c(y, padding)
             }
-  print(dim(d$y_rep))
+  ))
   
   d$N <- sum(vapply(input_list, `[[`, 0, 3))
   d$between_df <- d$K - 1
@@ -62,16 +64,16 @@ generate_data <- function(input_list, n_rep, alpha, parallel = FALSE) {
   d$between_ms <- numeric(n_rep)
   d$within_ms <- numeric(n_rep)
   d$f <- numeric(n_rep)
-
-for(r in 1:n_rep) {
-    d$grand_mean[r] <- mean(unlist(d$y_rep[, r, ]))
-    
+  
+  for(r in 1:n_rep) {
+    d$grand_mean[r] <- mean(unlist(d$y_rep[, r, ]), na.rm = TRUE)
+    between_ss <- within_ss <- 0
     for(k in 1:d$K) {
-      n_k <- input_list[[k]]$n
-      d$group_means[r, k] <- mean(d$y_rep[, r, k])
+      n_k <- d$group_sizes[k]
+      d$group_means[r, k] <- mean(d$y_rep[, r, k], na.rm = TRUE)
       
-      between_ss <- n_k * (d$group_means[r, k] - d$grand_mean[r])^2
-      within_ss <- sum((d$y_rep[, r, k] - d$group_means[r, k])^2)
+      between_ss <- n_k * (d$group_means[r, k] - d$grand_mean[r])^2 + between_ss
+      within_ss <- sum((d$y_rep[, r, k] - d$group_means[r, k])^2, na.rm = TRUE) + within_ss
     }
     d$between_ms[r] <- between_ss / d$between_df
     d$within_ms[r] <- within_ss / d$within_df
@@ -82,9 +84,8 @@ for(r in 1:n_rep) {
       if (r == n_rep) cat("\n")
     }
   }
-
+  
   d$plot_colors <- rainbow_hcl(d$K, start = 30, end = 300)
-  d$alpha <- alpha
   
   d
 }
@@ -108,16 +109,16 @@ data_boxplot <- function(d) {
 sampling_distribution_plot <- function(d){
   ## sampling distributions
   # par(mar = c(3, 1, 2.5, 1) + .1)
-  plot(density(d$grand_mean), lwd = 2, lty = "dashed", col = "darkgray",
+  plot(density(d$grand_mean, na.rm = TRUE), lwd = 2, lty = "dashed", col = "darkgray",
        xlab = "", ylab = "", main = "", yaxt = "n",
        xlim = c(min(d$group_means), max(d$group_means)))
-  for(k in 1:d$K) lines(density(d$group_means[, k]),
+  for(k in 1:d$K) lines(density(d$group_means[, k], na.rm = TRUE),
                         lwd = 2, col = d$plot_colors[k])
 }
 
 mean_squares_plot <- function(d) {
-  between_den <- density(d$between_ms)
-  within_den <- density(d$within_ms)
+  between_den <- density(d$between_ms, na.rm = TRUE)
+  within_den <- density(d$within_ms, na.rm = TRUE)
   ## between MS
   # par(mar = c(1, 0, 2, 1) + .1)
   plot(between_den, lwd = 2, lty = "dashed",
@@ -130,7 +131,7 @@ mean_squares_plot <- function(d) {
        main = "", xlab = "", ylab = "", yaxt = "n")
 }
 
-f_stat_plot <- function(d) {
+f_stat_plot <- function(d, alpha) {
   h <- hist(d$f, breaks = 50, plot = FALSE)
   xlim <- c(min(h$breaks), max(h$breaks))
   x <- seq(xlim[1], xlim[2], 0.1)
@@ -139,7 +140,7 @@ f_stat_plot <- function(d) {
   plot(h, freq = FALSE, ylim = ylim, main = "", xlab = "", ylab = "")
   lines(x, x_den, xlim = xlim)
   
-  f_alpha <- qf(1 - d$alpha, d$between_df, d$within_df)
+  f_alpha <- qf(1 - alpha, d$between_df, d$within_df)
   rect(0, xlim[1], f_alpha, ylim[2],
        border = NA,
        col = do.call("rgb", as.list(c(col2rgb("steelblue")/255, 1/4))))

@@ -24,7 +24,7 @@ list(rng = rnorm, inv_F = qnorm, n = 15, mean = 0, sd = 1)
 ", nrows = 15, ncols = 80)
     ),
     column(4,
-           textInput("n_rep", "Number of simulations:", 5000),
+           textInput("n_rep", "Number of simulations:", 2000),
            textInput("alpha", "Alpha level of F test:", 0.05)
     )
   ),
